@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>手写数字识别</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        h1 {
+            color: white;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            display: flex;
+            gap: 40px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 1200px;
+        }
+        
+        .input-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .canvas-section, .upload-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
+        }
+        
+        #canvas {
+            border: 3px solid #667eea;
+            border-radius: 10px;
+            background: black;
+            cursor: crosshair;
+        }
+        
+        .buttons {
+            margin-top: 15px;
+            display: flex;
+            gap: 15px;
+        }
+        
+        button {
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        #clear-btn {
+            background: #ff6b6b;
+            color: white;
+        }
+        
+        #clear-btn:hover {
+            background: #ee5a5a;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(255, 107, 107, 0.4);
+        }
+        
+        #predict-btn, #upload-predict-btn {
+            background: #4ecdc4;
+            color: white;
+        }
+        
+        #predict-btn:hover, #upload-predict-btn:hover {
+            background: #44b8b0;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(78, 205, 196, 0.4);
+        }
+        
+        /* 上传按钮样式 */
+        .upload-btn-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+        
+        .upload-btn {
+            border: 2px dashed #667eea;
+            color: #667eea;
+            background-color: white;
+            padding: 12px 30px;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-btn:hover {
+            border-color: #764ba2;
+            color: #764ba2;
+            background: #f0f0ff;
+        }
+        
+        .upload-btn-wrapper input[type=file] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+        
+        #upload-image {
+            max-width: 280px;
+            max-height: 280px;
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            display: none;
+            margin-bottom: 10px;
+        }
+        
+        .result-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 250px;
+        }
+        
+        .prediction-box {
+            text-align: center;
+            padding: 30px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .prediction-box h2 {
+            color: #667eea;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        .predicted-number {
+            font-size: 80px;
+            font-weight: bold;
+            color: #764ba2;
+            margin: 20px 0;
+        }
+        
+        .confidence {
+            font-size: 18px;
+            color: #4ecdc4;
+            font-weight: bold;
+        }
+        
+        /* Top-3 结果样式 */
+        .top3-box {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .top3-item {
+            text-align: center;
+            padding: 15px 20px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 12px;
+            color: white;
+            min-width: 80px;
+            transition: transform 0.3s ease;
+        }
+        
+        .top3-item:hover {
+            transform: translateY(-3px);
+        }
+        
+        .top3-rank {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+        
+        .top3-number {
+            font-size: 32px;
+            font-weight: bold;
+        }
+        
+        .top3-confidence {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+        
+        .probabilities {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            width: 100%;
+        }
+        
+        .prob-item {
+            text-align: center;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .prob-item:hover {
+            background: #e9ecef;
+        }
+        
+        .prob-number {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 16px;
+        }
+        
+        .prob-bar-container {
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+        
+        .prob-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+        
+        .prob-value {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .method-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .tab.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .tab.inactive {
+            background: #f0f0f0;
+            color: #666;
+        }
+        
+        .tab.inactive:hover {
+            background: #e0e0e0;
+        }
+        
+        /* 历史记录样式 */
+        .history-section {
+            margin-top: 30px;
+            width: 100%;
+            max-width: 800px;
+        }
+        
+        .history-title {
+            color: #667eea;
+            font-size: 20px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .history-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 15px;
+        }
+        
+        .history-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 20px;
+            background: white;
+            border-radius: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .history-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        }
+        
+        .history-number {
+            font-size: 28px;
+            font-weight: bold;
+            color: #764ba2;
+        }
+        
+        .history-confidence {
+            font-size: 14px;
+            color: #4ecdc4;
+        }
+        
+        .history-time {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .clear-history-btn {
+            background: #95a5a6;
+            color: white;
+            padding: 8px 20px;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        
+        .clear-history-btn:hover {
+            background: #7f8c8d;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                padding: 20px;
+            }
+            
+            #canvas {
+                width: 280px;
+                height: 280px;
+            }
+            
+            .top3-box {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .top3-item {
+                width: 100%;
+                max-width: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>✏️ 手写数字识别</h1>
+    
+    <div class="container">
+        <div class="input-section">
+            <!-- 方法选择标签 -->
+            <div class="method-tabs">
+                <button class="tab active" id="draw-tab" onclick="switchMethod('draw')">手写识别</button>
+                <button class="tab inactive" id="upload-tab" onclick="switchMethod('upload')">图片上传</button>
+            </div>
+            
+            <!-- 手写板区域 -->
+            <div class="canvas-section" id="canvas-section">
+                <canvas id="canvas" width="280" height="280"></canvas>
+                <div class="buttons">
+                    <button id="clear-btn">🗑️ 清除</button>
+                    <button id="predict-btn">🔮 识别</button>
+                </div>
+            </div>
+            
+            <!-- 图片上传区域 -->
+            <div class="upload-section" id="upload-section" style="display: none;">
+                <img id="upload-image" alt="上传的图片">
+                <div class="upload-btn-wrapper">
+                    <button class="upload-btn">📁 选择图片</button>
+                    <input type="file" name="file" id="file-input" accept="image/*">
+                </div>
+                <button id="upload-predict-btn" style="display: none;">🔮 识别图片</button>
+            </div>
+        </div>
+        
+        <div class="result-section">
+            <div class="prediction-box">
+                <h2>识别结果</h2>
+                <div class="predicted-number" id="prediction">?</div>
+                <div class="confidence" id="confidence">置信度: 0%</div>
+            </div>
+            
+            <!-- Top-3 预测结果 -->
+            <div class="top3-box" id="top3-box">
+                <div class="top3-item">
+                    <div class="top3-rank">第1名</div>
+                    <div class="top3-number" id="top1">?</div>
+                    <div class="top3-confidence" id="top1-conf">0%</div>
+                </div>
+                <div class="top3-item">
+                    <div class="top3-rank">第2名</div>
+                    <div class="top3-number" id="top2">?</div>
+                    <div class="top3-confidence" id="top2-conf">0%</div>
+                </div>
+                <div class="top3-item">
+                    <div class="top3-rank">第3名</div>
+                    <div class="top3-number" id="top3">?</div>
+                    <div class="top3-confidence" id="top3-conf">0%</div>
+                </div>
+            </div>
+            
+            <div class="probabilities" id="probabilities">
+                <!-- 概率条将由JavaScript动态生成 -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- 历史识别记录 -->
+    <div class="history-section">
+        <h3 class="history-title">📜 历史识别记录</h3>
+        <div class="history-list" id="history-list">
+            <div style="color: #999; text-align: center;">暂无识别记录</div>
+        </div>
+        <div style="text-align: center;">
+            <button class="clear-history-btn" id="clear-history-btn" style="display: none;">🗑️ 清空历史</button>
+        </div>
+    </div>
+    
+    <script>
+        // 当前方法
+        let currentMethod = 'draw';
+        
+        // 历史记录
+        let history = [];
+        
+        // 切换方法
+        function switchMethod(method) {
+            currentMethod = method;
+            
+            if (method === 'draw') {
+                document.getElementById('canvas-section').style.display = 'flex';
+                document.getElementById('upload-section').style.display = 'none';
+                document.getElementById('draw-tab').className = 'tab active';
+                document.getElementById('upload-tab').className = 'tab inactive';
+            } else {
+                document.getElementById('canvas-section').style.display = 'none';
+                document.getElementById('upload-section').style.display = 'flex';
+                document.getElementById('draw-tab').className = 'tab inactive';
+                document.getElementById('upload-tab').className = 'tab active';
+            }
+            
+            // 重置结果
+            resetResults();
+        }
+        
+        // 重置结果
+        function resetResults() {
+            document.getElementById('prediction').textContent = '?';
+            document.getElementById('confidence').textContent = '置信度: 0%';
+            document.getElementById('top1').textContent = '?';
+            document.getElementById('top1-conf').textContent = '0%';
+            document.getElementById('top2').textContent = '?';
+            document.getElementById('top2-conf').textContent = '0%';
+            document.getElementById('top3').textContent = '?';
+            document.getElementById('top3-conf').textContent = '0%';
+            updateProbabilities([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]);
+        }
+        
+        // 获取画布
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 设置画笔样式
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 15;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        
+        // 绘制状态
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        
+        // 鼠标事件
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+        
+        // 触摸事件
+        canvas.addEventListener('touchstart', startDrawing);
+        canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('touchend', stopDrawing);
+        
+        function startDrawing(e) {
+            isDrawing = true;
+            [lastX, lastY] = getPosition(e);
+        }
+        
+        function draw(e) {
+            if (!isDrawing) return;
+            
+            const [x, y] = getPosition(e);
+            
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            
+            [lastX, lastY] = [x, y];
+        }
+        
+        function stopDrawing() {
+            isDrawing = false;
+        }
+        
+        function getPosition(e) {
+            const rect = canvas.getBoundingClientRect();
+            if (e.touches) {
+                return [e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top];
+            }
+            return [e.clientX - rect.left, e.clientY - rect.top];
+        }
+        
+        // 清除画布
+        document.getElementById('clear-btn').addEventListener('click', () => {
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            resetResults();
+        });
+        
+        // 手写识别按钮
+        document.getElementById('predict-btn').addEventListener('click', predictDraw);
+        
+        // 图片上传处理
+        document.getElementById('file-input').addEventListener('change', handleFileUpload);
+        
+        // 图片识别按钮
+        document.getElementById('upload-predict-btn').addEventListener('click', predictUpload);
+        
+        // 清空历史记录按钮
+        document.getElementById('clear-history-btn').addEventListener('click', clearHistory);
+        
+        async function predictDraw() {
+            // 将画布转换为base64图像
+            const imageData = canvas.toDataURL('image/png');
+            
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ image: imageData })
+                });
+                
+                const result = await response.json();
+                updateResult(result);
+            } catch (error) {
+                console.error('预测失败:', error);
+                alert('预测失败，请重试');
+            }
+        }
+        
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.getElementById('upload-image');
+                    img.src = e.target.result;
+                    img.style.display = 'block';
+                    document.getElementById('upload-predict-btn').style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+        
+        async function predictUpload() {
+            const fileInput = document.getElementById('file-input');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('请先选择图片');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                if (result.error) {
+                    alert(result.error);
+                } else {
+                    updateResult(result);
+                }
+            } catch (error) {
+                console.error('预测失败:', error);
+                alert('预测失败，请重试');
+            }
+        }
+        
+        function updateResult(result) {
+            // 更新主预测结果
+            document.getElementById('prediction').textContent = result.prediction;
+            document.getElementById('confidence').textContent = `置信度: ${result.confidence}%`;
+            
+            // 更新概率条
+            updateProbabilities(result.probabilities);
+            
+            // 更新 Top-3 结果
+            updateTop3(result.probabilities);
+            
+            // 添加到历史记录
+            addToHistory(result.prediction, result.confidence);
+        }
+        
+        function updateTop3(probabilities) {
+            // 创建带索引的概率数组
+            const indexedProbs = probabilities.map((prob, index) => ({ index, prob }));
+            
+            // 按概率降序排序
+            indexedProbs.sort((a, b) => b.prob - a.prob);
+            
+            // 更新 Top-3
+            document.getElementById('top1').textContent = indexedProbs[0].index;
+            document.getElementById('top1-conf').textContent = `${Math.round(indexedProbs[0].prob * 100)}%`;
+            document.getElementById('top2').textContent = indexedProbs[1].index;
+            document.getElementById('top2-conf').textContent = `${Math.round(indexedProbs[1].prob * 100)}%`;
+            document.getElementById('top3').textContent = indexedProbs[2].index;
+            document.getElementById('top3-conf').textContent = `${Math.round(indexedProbs[2].prob * 100)}%`;
+        }
+        
+        function updateProbabilities(probabilities) {
+            const container = document.getElementById('probabilities');
+            container.innerHTML = '';
+            
+            probabilities.forEach((prob, index) => {
+                const percent = Math.round(prob * 100);
+                const item = document.createElement('div');
+                item.className = 'prob-item';
+                item.innerHTML = `
+                    <div class="prob-number">${index}</div>
+                    <div class="prob-bar-container">
+                        <div class="prob-bar" style="width: ${percent}%"></div>
+                    </div>
+                    <div class="prob-value">${percent}%</div>
+                `;
+                container.appendChild(item);
+            });
+        }
+        
+        function addToHistory(number, confidence) {
+            // 获取当前时间
+            const now = new Date();
+            const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+            
+            // 添加到历史记录
+            history.unshift({ number, confidence, time: timeStr });
+            
+            // 限制历史记录数量
+            if (history.length > 10) {
+                history.pop();
+            }
+            
+            // 更新显示
+            updateHistoryDisplay();
+        }
+        
+        function updateHistoryDisplay() {
+            const container = document.getElementById('history-list');
+            
+            if (history.length === 0) {
+                container.innerHTML = '<div style="color: #999; text-align: center;">暂无识别记录</div>';
+                document.getElementById('clear-history-btn').style.display = 'none';
+                return;
+            }
+            
+            document.getElementById('clear-history-btn').style.display = 'inline-block';
+            
+            container.innerHTML = '';
+            
+            history.forEach(item => {
+                const historyItem = document.createElement('div');
+                historyItem.className = 'history-item';
+                historyItem.innerHTML = `
+                    <div class="history-number">${item.number}</div>
+                    <div>
+                        <div class="history-confidence">${item.confidence}%</div>
+                        <div class="history-time">${item.time}</div>
+                    </div>
+                `;
+                container.appendChild(historyItem);
+            });
+        }
+        
+        function clearHistory() {
+            history = [];
+            updateHistoryDisplay();
+        }
+        
+        // 初始化画布为黑色
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // 初始化概率条
+        updateProbabilities([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]);
+    </script>
+</body>
+</html>
